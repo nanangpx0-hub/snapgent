@@ -26,7 +26,7 @@ const ZSProvider = (() => {
     STABLE_MS: 10000,
     RESPONSE_TIMEOUT_MS: 300000,
   };
-  const visible = (el) => !!el && el.isConnected && el.getClientRects().length > 0;
+  const visible = (el) => !!el && el.isConnected && (typeof el.getClientRects === "function" ? el.getClientRects().length > 0 : false);
   const allItems = () => {
     const list = document.querySelector(S.list);
     return list ? [...list.querySelectorAll(`${S.user},${S.assistant}`)] : [];

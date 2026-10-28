@@ -26,7 +26,7 @@ const ZSProvider = (() => {
     STABLE_MS: 10000,
     RESPONSE_TIMEOUT_MS: 300000,
   };
-  const visible = (el) => !!el && el.isConnected && el.getClientRects().length > 0;
+  const visible = (el) => !!el && el.isConnected && (typeof el.getClientRects === "function" ? el.getClientRects().length > 0 : false);
   const excluded = (el) => !el.closest("#zs-root");
   const isUserItem = (item) => !!item && item.matches(S.user);
   const isAssistantItem = (item) => !!item && item.matches(S.assistant);

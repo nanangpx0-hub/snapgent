@@ -3,14 +3,17 @@ const SUPPORTED_HOSTS = [
   "chat.deepseek.com", "deepseek.com", "chatgpt.com", "chat.openai.com", "claude.ai", "www.claude.ai",
   "gemini.google.com", "www.kimi.ai", "kimi.ai",
   "chat.z.ai", "chat.qwen.ai", "arena.ai", "www.meta.ai", "meta.ai", "ptero.pro", "grok.com",
-  "perplexity.ai", "chat.mistral.ai", "copilot.com", "copilot.microsoft.com",
+  "perplexity.ai", "www.perplexity.ai", "chat.mistral.ai", "copilot.com", "copilot.microsoft.com",
   "copilot.cloud.microsoft", "m365.cloud.microsoft", "poe.com",
 ];
 // const DEFAULT_AI_URL = "https://chat.deepseek.com/"; // DeepSeek hidden (disabled, not deleted)
 const DEFAULT_AI_URL = "https://chatgpt.com/";
 const isSupportedUrl = (url) => {
-  try { const parsed = new URL(url); return parsed.protocol === "https:" && SUPPORTED_HOSTS.includes(parsed.hostname); }
-  catch { return false; }
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    return parsed.protocol === "https:" && (SUPPORTED_HOSTS.includes(parsed.hostname) || SUPPORTED_HOSTS.includes(host));
+  } catch { return false; }
 };
 
 
@@ -92,6 +95,12 @@ const openClaudeBtn = document.getElementById("open-claude");
 if (openClaudeBtn) {
   openClaudeBtn.addEventListener("click", () => {
     chrome.tabs.create({ url: "https://claude.ai/new" });
+  });
+}
+const openDeepseekBtn = document.getElementById("open-deepseek");
+if (openDeepseekBtn) {
+  openDeepseekBtn.addEventListener("click", () => {
+    chrome.tabs.create({ url: "https://chat.deepseek.com/" });
   });
 }
 document.getElementById("restart").addEventListener("click", (e) => {

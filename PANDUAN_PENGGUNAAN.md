@@ -98,6 +98,14 @@ Jika Anda menginstal aplikasi **Claude Desktop** di Windows:
 2. Restart aplikasi Claude Desktop.
 3. Seluruh 24 tools VS Code (`snapgent-vscode`) akan langsung muncul di menu ikon palu/tools bawaan Claude Desktop.
 
+### D. Menggunakan Perplexity AI (`https://www.perplexity.ai/`)
+1. Pastikan `start.bat` aktif dan VS Code telah membuka folder project Anda.
+2. Buka [https://www.perplexity.ai/](https://www.perplexity.ai/) atau klik **+ New** di sidebar kiri.
+3. Bar Snapgent akan muncul di atas kotak chat. Klik tombol **`▶︎ Start`**.
+4. Tunggu beberapa detik hingga proses handshake selesai dan status bar berubah menjadi **`Active · 24 tools · VS Code`**.
+5. Ketik tugas yang ingin dikerjakan. Perplexity akan mengeksekusi tool MCP secara langsung tanpa web search tambahan.
+6. Panduan mendalam mengenai integrasi Perplexity dan penanganan kasus khusus (seperti Command Palette `/` atau unclosed JSON) dapat dibaca di [Panduan Perplexity](file:///c:/laragon/www/snapgent/docs/PANDUAN_PERPLEXITY.md).
+
 ---
 
 ## 6. Referensi 24 Tools MCP VS Code (`vscode_mcp.py`)
@@ -173,3 +181,6 @@ python -m unittest -v test_vscode_mcp.py
 | **`Paused · open this tab`** | Tab browser AI berada di latar belakang (*background*) saat agent bekerja | Klik kembali tab AI tersebut agar tampil di layar utama (*foreground*). |
 | **`Disconnected · reload page`** | Ekstensi baru saja di-*reload* di `chrome://extensions` | Tekan **F5** (Refresh) pada tab situs AI. |
 | **Klik `▶︎ Start` tidak mengetikkan prompt** | Kode ekstensi di memori browser belum diperbarui | Buka `chrome://extensions`, klik ikon **Reload (⟳)** pada **snapgentV3**, lalu tekan **F5** di tab AI. |
+| **Popup *"Type a command or search"* di Perplexity** | Fitur Command Palette bawaan Perplexity terpicu oleh karakter `/` atau fokus | Tekan tombol **Esc** untuk menutupnya, atau biarkan ekstensi menutupnya otomatis via `dismissCommandPalette`. |
+| **Error *"command was cut off before it finished"*** | Token streaming JSON Perplexity belum selesai saat finalisasi pembacaan | Periksa chat baru (**+ New**) dan klik **`▶︎ Start`** tanpa mengetik manual saat bootstrap berjalan. |
+| **`WebSocket connection to ws://127.0.0.1:17613 failed`** | Service worker ekstensi mencoba reconnect saat `bridge.exe` belum siap | Jalankan `start.bat`. Ekstensi akan otomatis tersambung begitu socket bridge terbuka. |

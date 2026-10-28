@@ -199,9 +199,14 @@ The extension reads commands from your normal reply text and runs them on that M
 {"command":"exact_tool_name","params":{"key":"value"}}
 \`\`\`
 
-At the start of the session, call \`list_commands\` with server "${targetServer}" to get the exact available tools and parameter schemas. Use only names and parameters from that result. Do not assume tools are available. If the needed tool is missing or the server is offline, explain that clearly and do not claim the task is complete. Do not call tools on another server unless the user asks to switch targets.
+IMPORTANT FIRST ACTION: In your very first reply right now, output ONLY the list_commands command as a fenced JSON code block. Do NOT write any conversational text, greetings, explanations, or questions for the user. Output ONLY:
+\`\`\`json
+{"command":"list_commands","params":{"server":"${targetServer}"}}
+\`\`\`
+Once snapgentV3 executes it and sends back the result, reply in one short sentence confirming you are ready and wait for the user's instructions. Use only tool names and parameters from that result. Do not assume tools are available. If the needed tool is missing or the server is offline, explain that clearly and do not claim the task is complete. Do not call tools on another server unless the user asks to switch targets.
 
 Rules:
+- Do not search the web for commands or tools. Respond directly and immediately without search.
 - Execute one command at a time and wait for its result before writing another.
 - Put every command in a fenced JSON code block; do not use native function calls.
 - Respect the user's requested workspace and file scope. Never perform broad or destructive changes without explicit confirmation.

@@ -83,7 +83,7 @@
   // AI chat sites snapgentV3 works on. Keep in sync with manifest.json
   // content_scripts and background.js PROVIDER_URLS when adding a provider.
   const AI_SITES = [
-    // { name: "DeepSeek", url: "https://chat.deepseek.com/" }, // hidden from UI bar (disabled, not deleted)
+    { name: "DeepSeek", url: "https://chat.deepseek.com/" },
     { name: "ChatGPT", url: "https://chatgpt.com/" },
     { name: "Claude", url: "https://claude.ai/new" },
     { name: "Gemini", url: "https://gemini.google.com/app" },
@@ -1849,12 +1849,6 @@
   // ════════════════════════════════════════════════════════════════════════
   async function startSession() {
     if (A.running || A.starting) return;
-    // "Start session" is allowed ONLY on a blank conversation. Opening an
-    // EXISTING conversation must never trigger the bootstrap.
-    if (!P.chatIsEmpty() && !A.started) {
-      ui.toast("Use an empty chat.");
-      return;
-    }
     A.userStopped = false;
     A.stop = false;               // clear any halt left by a prior aborted bootstrap
     // Snapshot any turn already on screen at session start (normally none on a
@@ -3063,7 +3057,8 @@
         if (selectedTargetId === "roblox") disabled = !bridgeOk && !addonOk;
       } else {
         toneClass = "noagent";
-        msg = `No agent. Open a new chat.`;
+        msg = `No agent.`;
+        label = `▶︎ Start`; kind = "start";
       }
       // Parked on visibility: the loop is alive but deliberately frozen because
       // this tab is not the foreground tab of its window. Say so explicitly -

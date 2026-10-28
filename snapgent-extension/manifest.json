@@ -3,7 +3,7 @@
   "name": "snapgentV3 × Roblox Studio Agent",
   "version": "3.0.0",
   "description": "Connect ChatGPT, Claude, DeepSeek, Gemini, Grok, Kimi, GLM, Qwen, Arena, Meta AI, Ptero, Perplexity, Mistral Vibe, Microsoft Copilot, and Poe to local MCP tools.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": [
     "https://chat.deepseek.com/*",
     "https://deepseek.com/*",
@@ -30,8 +30,7 @@
     "https://copilot.cloud.microsoft/*",
     "https://m365.cloud.microsoft/*",
     "https://poe.com/*",
-    "http://127.0.0.1/*",
-    "ws://127.0.0.1/*"
+    "http://127.0.0.1/*"
   ],
   "background": {
     "service_worker": "background.js"

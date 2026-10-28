@@ -63,10 +63,10 @@ const ZSProvider = (() => {
   let diag = () => {}; // injected by core via init()
 
   const S = {
-    msg: "[data-message-author-role]",
+    msg: "[data-message-author-role], article[data-testid^='conversation-turn-'], article",
     userRole: "user",
     assistantRole: "assistant",
-    reply: ".markdown",
+    reply: ".markdown, [class*='markdown'], .prose, [class*='prose']",
     editor: '#prompt-textarea, .ProseMirror[contenteditable], [data-mobile-composer-prompt], textarea[aria-label="Chat with ChatGPT"]',
     // The ONE submit control; its data-testid says whether it is currently a
     // send or a stop button (see isStopBtn). Id first - it survives testid churn.
@@ -115,9 +115,36 @@ const ZSProvider = (() => {
   };
 
   // ── Turn classification ───────────────────────────────────────────────────
-  const role = (item) => (item && item.getAttribute ? item.getAttribute("data-message-author-role") : null);
-  const isUserItem = (item) => role(item) === S.userRole;
-  const isAssistantItem = (item) => role(item) === S.assistantRole;
+  const role = (item) => {
+    if (!item) return null;
+    if (typeof item.getAttribute === "function") {
+      const direct = item.getAttribute("data-message-author-role");
+      if (direct) return direct;
+      const tid = item.getAttribute("data-testid") || "";
+      if (tid.includes("user")) return S.userRole;
+      if (tid.includes("assistant")) return S.assistantRole;
+    }
+    if (typeof item.querySelector === "function") {
+      const child = item.querySelector("[data-message-author-role]");
+      if (child && typeof child.getAttribute === "function") {
+        const cr = child.getAttribute("data-message-author-role");
+        if (cr) return cr;
+      }
+    }
+    return null;
+  };
+  const isUserItem = (item) => {
+    const r = role(item);
+    if (r === S.userRole) return true;
+    if (r === S.assistantRole) return false;
+    return !!(item && typeof item.querySelector === "function" && item.querySelector(`[data-message-author-role="${S.userRole}"]`));
+  };
+  const isAssistantItem = (item) => {
+    const r = role(item);
+    if (r === S.assistantRole) return true;
+    if (r === S.userRole) return false;
+    return !!(item && typeof item.querySelector === "function" && item.querySelector(`[data-message-author-role="${S.assistantRole}"]`));
+  };
 
   // Text extraction that can skip our own chip (and any excluded subtree).
   //
@@ -202,22 +229,31 @@ const ZSProvider = (() => {
     if (!item) return "";
     if (isAssistantItem(item)) {
       // textWithout, never textContent - see the CodeMirror note there.
-      return [...item.querySelectorAll(S.reply)].map((m) => textWithout(m)).join("\n");
+      const mds = [...item.querySelectorAll(S.reply)];
+      if (mds.length) return mds.map((m) => textWithout(m)).join("\n");
     }
     return textWithout(item);
   }
 
   function classifyText(item, excludeSel) {
     if (isAssistantItem(item)) {
-      return [...item.querySelectorAll(S.reply)]
-        .filter((m) => !(excludeSel && m.closest(excludeSel)))
-        .map((m) => textWithout(m, excludeSel)).join("\n");
+      const mds = [...item.querySelectorAll(S.reply)]
+        .filter((m) => !(excludeSel && m.closest && m.closest(excludeSel)));
+      if (mds.length) {
+        return mds.map((m) => textWithout(m, excludeSel)).join("\n");
+      }
     }
     return textWithout(item, excludeSel);
   }
 
   // ── DOM primitives ────────────────────────────────────────────────────────
-  const allItems = () => [...document.querySelectorAll(S.msg)];
+  const allItems = () => {
+    const raw = [...document.querySelectorAll(S.msg)].filter((it) => !(it.closest && it.closest("#zs-root")));
+    return raw.filter((it) => {
+      const parent = it.parentElement;
+      return !(parent && parent.closest && parent.closest(S.msg));
+    });
+  };
   const assistantItems = () => allItems().filter(isAssistantItem);
   const assistantCount = () => assistantItems().length;
   const userCount = () => allItems().filter(isUserItem).length;
@@ -529,10 +565,13 @@ const ZSProvider = (() => {
   function readAssistant() {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
-    const mds = [...item.querySelectorAll(S.reply)];
+    const mds = [...item.querySelectorAll(S.reply)].filter((m) => !(m.closest && m.closest(".zs-chip")));
+    const reply = mds.length
+      ? mds.map((m) => textWithout(m, ".zs-chip")).join("\n").trim()
+      : textWithout(item, ".zs-chip").trim();
     return {
       present: true,
-      reply: mds.map((m) => textWithout(m, ".zs-chip")).join("\n").trim(),
+      reply,
       thinking: "", // reasoning is gated by the stop button, not parsed as text
       item,
     };

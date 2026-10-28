@@ -290,10 +290,19 @@ function statusObj() {
 }
 
 function broadcastStatus() {
-  chrome.runtime.sendMessage(statusObj()).catch(() => {});
-  chrome.tabs.query({ url: PROVIDER_URLS }, (tabs) => {
-    for (const t of tabs) chrome.tabs.sendMessage(t.id, statusObj()).catch(() => {});
-  });
+  try {
+    chrome.runtime.sendMessage(statusObj()).catch(() => {});
+  } catch {}
+  try {
+    chrome.tabs.query({ url: PROVIDER_URLS }, (tabs) => {
+      if (chrome.runtime.lastError || !Array.isArray(tabs)) return;
+      for (const t of tabs) {
+        if (t && t.id) {
+          chrome.tabs.sendMessage(t.id, statusObj()).catch(() => {});
+        }
+      }
+    });
+  } catch {}
 }
 
 // ── messages from content.js / popup.js ─────────────────────────────────

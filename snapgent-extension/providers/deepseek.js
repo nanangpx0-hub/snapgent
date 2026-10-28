@@ -28,20 +28,20 @@ const ZSProvider = (() => {
   // one-liner. DeepSeek ships hashed CSS-module class names (e.g. `d29f3d7d`);
   // where possible we lean on its stable design-system "ds-" classes instead.
   const S = {
-    chatItem: ".ds-message",
+    chatItem: ".ds-message, [data-virtual-list-item-key], div[class*='message']",
     userMod: "d29f3d7d", // hashed modifier on user turns (one-liner to update if DeepSeek redeploys)
     userBubble: ".fbb737a4", // user text bubble (secondary signal)
-    box: ".ds-markdown",
-    editor: "textarea", // DeepSeek uses a real <textarea>, NOT a contenteditable
+    box: ".ds-markdown, [class*='markdown']",
+    editor: "textarea#chat-input, textarea", // DeepSeek uses a real <textarea>, NOT a contenteditable
     // The inline "edit this message" box is DeepSeek's design-system bordered
     // textarea (.ds-textarea--bordered), mounted UP in the turn list. The bottom
     // composer is NOT wrapped in one - so this scopes getEditor() away from it.
     msgEditBox: ".ds-textarea",
-    thinking: ".ds-think-content",
-    markdown: ".ds-markdown",
-    generating: ".ds-loading",
-    sendBtn: ".ds-button--primary",
-    stopBtn: ".ds-button--primary",
+    thinking: ".ds-think-content, [class*='think']",
+    markdown: ".ds-markdown, [class*='markdown']",
+    generating: ".ds-loading, [class*='loading']",
+    sendBtn: ".ds-button--primary, button[class*='primary'], div[role='button'][class*='send'], button[aria-label*='Send'], button[aria-label*='send'], [data-testid*='send'], div[class*='send-button']",
+    stopBtn: ".ds-button--primary, button[class*='primary'], div[role='button'][class*='stop'], button[aria-label*='Stop'], button[aria-label*='stop'], [data-testid*='stop'], div[class*='stop-button']",
     // surfaces where DeepSeek shows errors / limit modals / toasts
     errorSurfaces:
       '[class*="ds-toast"],[class*="toast"],[class*="error"],[class*="alert"],' +
@@ -97,11 +97,20 @@ const ZSProvider = (() => {
   // ── Turn classification (multi-signal, virtualization-safe) ──────────────
   function isUserItem(item) {
     if (!item) return false;
-    if (S.userMod && item.classList.contains(S.userMod)) return true;
-    if (S.userBubble && item.querySelector(S.userBubble)) return true;
-    return false;
+    if (S.userMod && item.classList && item.classList.contains(S.userMod)) return true;
+    if (S.userBubble && item.querySelector && item.querySelector(S.userBubble)) return true;
+    if (item.getAttribute && item.getAttribute("data-role") === "user") return true;
+    if (item.className && typeof item.className === "string" && /\buser\b/i.test(item.className)) return true;
+    // Structural checks: assistant turns contain markdown or thinking containers
+    if (item.querySelector && (item.querySelector(S.markdown) || item.querySelector(S.thinking))) return false;
+    // Default fallback: a turn row with no assistant/thinking elements
+    return true;
   }
-  const isAssistantItem = (item) => !!item && !isUserItem(item);
+  const isAssistantItem = (item) => {
+    if (!item) return false;
+    if (item.querySelector && (item.querySelector(S.markdown) || item.querySelector(S.thinking))) return true;
+    return !isUserItem(item);
+  };
 
   // Text of an item for signature detection. For assistant turns we use ONLY
   // the non-thinking markdown, so tool blocks the model merely drafts inside
@@ -421,31 +430,26 @@ const ZSProvider = (() => {
     let state = composerModeState();
     for (let i = 0; i < 12; i++) {
       state = enforceComposer(reason);
-      // Ready as soon as an agent-usable model is on (Expert, or Vision/Instant if
-      // the user chose one) and Search is off. DeepThink is only required if a
-      // legacy toggle is actually present (V4 has none).
       const anyModel = state.expertOn || state.visionOn || state.instantOn ||
         (!state.expertFound && !state.visionFound && !state.instantFound);
       if (anyModel && state.searchOff && (state.deepThinkOn || !state.deepThinkFound)) break;
       await sleep(120);
     }
     state = composerModeState();
-    // Unified model (2026-09): no model tabs exist, so there is nothing to pick -
-    // ready once Search is off.
     const unified = !state.expertFound && !state.visionFound && !state.instantFound;
     diag("mode_ready", { reason, unified, ...state });
-    return { ...state, unified, ready: state.expertOn || state.visionOn || state.instantOn || (unified && state.searchOff) };
+    return {
+      ...state,
+      unified,
+      ready: state.expertOn || state.visionOn || state.instantOn || (unified && state.searchOff) || !!getEditor(),
+    };
   }
 
-  // DeepSeek's footer button doubles as SEND (an upward arrow) and STOP (a
-  // filled rounded square). Older builds drew the stop glyph with a <rect>; the
-  // current V4 build draws BOTH as a <path>: the send arrow's path starts
-  // mid-glyph ("M8.31…"), the stop square's path starts at a corner near the
-  // origin ("M2 …"). We treat the button as "stop" when it carries a <rect> OR a
-  // square-ish path (leading move to x ≤ 3) - never the M8 arrow. One-liner to
-  // update if DeepSeek reskins the footer button.
   function isStopBtn(btn) {
     if (!btn) return false;
+    const aria = btn.getAttribute ? (btn.getAttribute("aria-label") || "") : "";
+    if (/\b(stop|arr[ée]ter|halt|停止|berhenti)\b/i.test(aria)) return true;
+    if (btn.classList && (btn.classList.contains("stop") || [...btn.classList].some((c) => /stop/i.test(c)))) return true;
     if (btn.querySelector("rect")) return true; // legacy stop square
     const p = btn.querySelector("path");
     if (!p) return false;
@@ -646,7 +650,15 @@ const ZSProvider = (() => {
   // are the SAME button, so we refuse to click whenever a generation is live.
   function clickSendButton() {
     if (isBusyNow()) return false;
-    const btn = document.querySelector(S.sendBtn);
+    let btn = document.querySelector(S.sendBtn);
+    if (!btn) {
+      const ed = getEditor();
+      const box = ed ? (ed.closest("form") || (ed.parentElement && ed.parentElement.parentElement) || ed.parentElement) : null;
+      if (box) {
+        const btns = [...box.querySelectorAll("button, div[role='button']")];
+        btn = btns.find((b) => !isStopBtn(b) && (b.querySelector("svg") || /send|kirim|submit/i.test(b.innerText || b.getAttribute("aria-label") || ""))) || btns[btns.length - 1];
+      }
+    }
     if (btn && !isStopBtn(btn) && btn.getAttribute("aria-disabled") !== "true") {
       btn.click();
       return true;
